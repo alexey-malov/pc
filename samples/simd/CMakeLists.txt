@@ -13,7 +13,7 @@ project ("simd")
 
 if (MSVC)
     # warning level 4
-    add_compile_options(/W4)
+    add_compile_options(/W4 /arch:AVX2)
 else()
     # additional warnings
     add_compile_options(-Wall -Wextra -Wpedantic -O3 -mavx2)

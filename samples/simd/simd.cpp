@@ -52,7 +52,7 @@ struct alignas(32) Vector4d
 	double items[4];
 };
 
-void ArraySum(const Vector4d* src1, const Vector4d* src2, Vector4d* dst, double scale, int size)
+void ArrayTransform(const Vector4d* src1, const Vector4d* src2, Vector4d* dst, double scale, int size)
 {
 	for (int i = 0; i < size; ++i)
 	{
@@ -68,7 +68,7 @@ struct Vector4du
 	double items[4];
 };
 
-void ArraySum(const Vector4du* src1, const Vector4du* src2, Vector4du* dst, double scale, int size)
+void ArrayTransform(const Vector4du* src1, const Vector4du* src2, Vector4du* dst, double scale, int size)
 {
 	for (int i = 0; i < size; ++i)
 	{
@@ -81,29 +81,35 @@ void ArraySum(const Vector4du* src1, const Vector4du* src2, Vector4du* dst, doub
 
 int main()
 {
+	constexpr size_t numItems = 10'000;
+	constexpr size_t numIterations = 100'000;
+
 	{
-		constexpr size_t numItems = 10'000'000;
 		std::vector<Vector4d> vec1(numItems);
 		std::vector<Vector4d> vec2(numItems);
 		std::vector<Vector4d> dst(numItems);
 
+		// Пробегаемся по массиву вхолостую, чтобы прогреть кеш
+		ArrayTransform(vec1.data(), vec2.data(), dst.data(), 42.0, numItems);
 		MeasureTime("Aligned sum", [&vec1, &vec2, &dst] {
-			for (size_t i = 0; i < 100; ++i)
+			for (size_t i = 0; i < numIterations; ++i)
 			{
-				ArraySum(vec1.data(), vec2.data(), dst.data(), 42.0, numItems);
+				ArrayTransform(vec1.data(), vec2.data(), dst.data(), 42.0, numItems);
 			}
 		});
 	}
-	{
-		constexpr size_t numItems = 10'000'000;
-		std::vector<Vector4du> vec1(numItems);
-		std::vector<Vector4du> vec2(numItems);
-		std::vector<Vector4du> dst(numItems);
 
-		MeasureTime("Unaligned sum", [&vec1, &vec2, &dst] {
-			for (size_t i = 0; i < 100; ++i)
+	{
+		std::vector<Vector4du> vec1u(numItems);
+		std::vector<Vector4du> vec2u(numItems);
+		std::vector<Vector4du> dstu(numItems);
+
+		// Пробегаемся по массиву вхолостую, чтобы прогреть кеш
+		ArrayTransform(vec1u.data(), vec2u.data(), dstu.data(), 42.0, numItems);
+		MeasureTime("Unaligned sum", [&vec1u, &vec2u, &dstu] {
+			for (size_t i = 0; i < numIterations; ++i)
 			{
-				ArraySum(vec1.data(), vec2.data(), dst.data(), 42.0, numItems);
+				ArrayTransform(vec1u.data(), vec2u.data(), dstu.data(), 42.0, numItems);
 			}
 		});
 	}
