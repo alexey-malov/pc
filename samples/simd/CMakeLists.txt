@@ -12,8 +12,8 @@ endif()
 project ("simd")
 
 if (MSVC)
-    # warning level 4
-    add_compile_options(/W4)
+    # warning level 4, AVX2 instructions, Generate Assembly
+    add_compile_options(/W4 /arch:AVX2 /FA)
 else()
     # additional warnings
     add_compile_options(-Wall -Wextra -Wpedantic -O3 -mavx2)
