@@ -79,10 +79,16 @@ void ArrayTransform(const Vector4du* src1, const Vector4du* src2, Vector4du* dst
 	}
 }
 
+template <typename T>
+void DoNotOptimize(T const& val)
+{
+	asm volatile("" : : "g"(val) : "memory");
+}
+
 int main()
 {
 	constexpr size_t numItems = 10'000;
-	constexpr size_t numIterations = 100'000;
+	constexpr size_t numIterations = 10'000;
 
 	{
 		std::vector<Vector4d> vec1(numItems);
@@ -95,6 +101,7 @@ int main()
 			for (size_t i = 0; i < numIterations; ++i)
 			{
 				ArrayTransform(vec1.data(), vec2.data(), dst.data(), 42.0, numItems);
+				DoNotOptimize(dst);
 			}
 		});
 	}
