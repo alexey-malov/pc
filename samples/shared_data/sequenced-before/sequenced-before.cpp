@@ -17,6 +17,7 @@ int g()
 int h(int y)
 {
 	x += y;
+	return x;
 }
 
 int main()

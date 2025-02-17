@@ -1,6 +1,7 @@
 ﻿#include <cassert>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <stack>
 #include <stdexcept>
@@ -29,6 +30,23 @@ public:
 	{
 		std::shared_lock lk{ m_mutex };
 		return m_stack.empty();
+	}
+
+	[[nodiscard]] bool TryGetTop(T& out) const
+	{
+		std::shared_lock lk{ m_mutex };
+		if (m_stack.empty())
+			return false;
+		out = m_stack.top();
+		return true;
+	}
+
+	[[nodiscard]] std::optional<T> TryGetTop() const
+	{
+		std::shared_lock lk{ m_mutex };
+		if (m_stack.empty())
+			return std::nullopt;
+		return m_stack.top();
 	}
 
 	bool TryPop(T& out)
@@ -83,12 +101,24 @@ int main()
 			}
 		}
 	} };
+	std::jthread consumer2{ [&stack] {
+		for (int i = 0; i < 10'000'000; ++i)
+		{
+			if (int value; stack.TryGetTop(value))
+			{
+				// use value
+			}
+			if (auto value = stack.TryGetTop())
+			{
+				// use value
+			}
+		}
+	} };
 	for (int i = 0; i < 10'000'000; ++i)
 	{
-		if (auto value = stack.TryPop())
+		if (std::unique_ptr<int> value = stack.TryPop())
 		{
 			// use value
 		}
 	}
-	consumer1.join();
 }
