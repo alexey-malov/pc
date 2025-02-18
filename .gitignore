@@ -1,3 +1,5 @@
+*.drawio.bkp
+
 #include VSCode files
 .vscode/
 
