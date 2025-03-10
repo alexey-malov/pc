@@ -2,34 +2,26 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <queue>
+#include <random>
 #include <stop_token>
 #include <syncstream>
 #include <thread>
-#include <queue>
 
 using namespace std::chrono_literals;
 
+int Add(int x, int y)
+{
+	std::cout << "Add thread id:" << std::this_thread::get_id() << "\n";
+	return x + y;
+}
+
 int main()
 {
-	using Task = std::packaged_task<void()>;
-
-	std::mutex m;
-	std::queue<Task> tasks;
-	std::condition_variable cv;
-
-	std::jthread worker{ [&cv, &m, &tasks](std::stop_token stoken) {
-		std::unique_lock lk{ m };
-		for (;;)
-		{
-			cv.wait(lk, [&tasks, &stoken] {
-				return stoken.stop_requested() || tasks.empty();
-			});
-			if (stoken.stop_requested())
-				return;
-			auto task = std::move(tasks.front());
-			tasks.pop();
-			lk.unlock();
-			task();
-		}
-	} };
+	std::cout << "Main thread id:" << std::this_thread::get_id() << "\n";
+	std::packaged_task<int(int, int)> add(Add);
+	auto result = add.get_future();
+	std::jthread worker{ std::move(add), 10, 20 };
+	worker.join();
+	std::cout << result.get() << "\n";
 }
