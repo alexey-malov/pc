@@ -2,6 +2,7 @@
 
 #include VSCode files
 .vscode/
+build/
 
 # Ignore CMake temporary files
 CMakeLists.txt.user
