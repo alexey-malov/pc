@@ -8,8 +8,6 @@
 #include <syncstream>
 #include <thread>
 
-using namespace std::chrono_literals;
-
 int Add(int x, int y)
 {
 	std::cout << "Add thread id:" << std::this_thread::get_id() << "\n";

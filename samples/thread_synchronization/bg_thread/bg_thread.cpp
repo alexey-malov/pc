@@ -10,8 +10,6 @@
 #include <thread>
 #include <tuple>
 
-using namespace std::chrono_literals;
-
 void Divide(int x, int y, std::promise<int> promise)
 {
 	std::cout << "Divide thread id:" << std::this_thread::get_id() << "\n";

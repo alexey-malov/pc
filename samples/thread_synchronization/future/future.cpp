@@ -1,4 +1,5 @@
-﻿#include <future>
+﻿#include <chrono>
+#include <future>
 #include <iostream>
 #include <stdexcept>
 #include <syncstream>

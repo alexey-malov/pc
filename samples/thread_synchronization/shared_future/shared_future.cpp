@@ -3,8 +3,6 @@
 #include <stdexcept>
 #include <syncstream>
 
-using namespace std::chrono_literals;
-
 int main()
 {
 	auto f1 = std::async(std::launch::async, [] { return 10; }).share();

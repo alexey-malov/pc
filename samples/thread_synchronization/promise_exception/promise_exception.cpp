@@ -9,8 +9,6 @@
 #include <thread>
 #include <vector>
 
-using namespace std::chrono_literals;
-
 int main()
 {
 	std::promise<std::string> stringPromise;
