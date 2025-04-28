@@ -1,59 +1,77 @@
 ﻿#include <coroutine>
 #include <iostream>
 
-namespace
-{
 
-template <typename ResultType>
+template <typename T>
 class Task
 {
 public:
 	struct promise_type
 	{
-		Task get_return_object() { return {}; }
-		std::suspend_never initial_suspend() { return {}; }
+		T result; // Тут хранится результат
+		Task get_return_object() { return Task{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
+		std::suspend_always initial_suspend() { return {}; }
 		std::suspend_always final_suspend() noexcept { return {}; }
-		void unhandled_exception() {}
-		void return_value([[maybe_unused]] ResultType value)
-		{
-		}
+		void return_value(T value) { result = std::move(value); }
+		void unhandled_exception() { std::terminate(); }
 	};
-	bool await_ready() const noexcept
+
+	T GetResult() { return m_handle.promise().result; }
+
+	void Resume()
 	{
-		return false;
+		if (m_handle && !m_handle.done())
+		{
+			m_handle.resume();
+		}
 	}
 
-	ResultType await_resume() noexcept
+	Task() = default;
+
+	explicit Task(std::coroutine_handle<promise_type> handle)
+		: m_handle(handle)
 	{
 	}
 
-	void await_suspend(std::coroutine_handle<> h) noexcept
+	Task(Task&& other) noexcept
+		: m_handle(std::exchange(other.m_handle, nullptr))
 	{
-		std::cout << "Task::await_suspend: " << h.address() << "\n";
-		h.resume();
 	}
-	
+	Task& operator=(Task&& other) noexcept
+	{
+		if (this != std::addressof(other))
+		{
+			m_handle = std::exchange(other.m_handle, nullptr);
+		}
+		return *this;
+	}
+
+	~Task()
+	{
+		if (m_handle)
+			m_handle.destroy();
+	}
+
+private:
+	std::coroutine_handle<promise_type> m_handle = nullptr;
 };
 
-Task<int> GetAnswer()
+Task<int> Add(int a, int b)
 {
-	co_return 42;
+	std::cout << "Add " << a << " + " << b << "\n";
+	co_return a + b;
 }
+#if 0
 
-Task<int> GetAnswer2()
+Task<int> Calculate()
 {
-	co_return 43;
+	auto x = Add(2, 3);
+	auto y = Add(5, 10);
+	return co_await x + co_await y;
 }
-
-Task<int> GetFinalAnswer()
-{
-	int value = co_await GetAnswer();
-	int value2 = co_await GetAnswer2();
-	co_return value + value2;
-}
-
-} // namespace
+#endif
 
 int main()
 {
+
 }

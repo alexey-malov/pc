@@ -1,106 +1,154 @@
-﻿#include <coroutine>
+﻿#include <cassert>
+#include <coroutine>
 #include <iostream>
+#include <utility>
 
-namespace
-{
-
-class ReturnObject
+template <typename T>
+class Task
 {
 public:
-	struct promise_type;
-	using CoroHandle = std::coroutine_handle<promise_type>;
-
 	struct promise_type
 	{
-		promise_type()
-		{
-			std::cout << "promise_type " << this << "\n";
-		}
-		promise_type(const promise_type&) = delete;
-		promise_type& operator=(const promise_type&) = delete;
-		~promise_type() { std::cout << "~promise_type\n"; }
-		ReturnObject get_return_object()
-		{
-			std::cout << "get_return_object\n";
-			return { CoroHandle::from_promise(*this) };
-		}
-		std::suspend_never initial_suspend()
-		{
-			std::cout << "initial_suspend\n";
-			return {};
-		}
-		std::suspend_always final_suspend() noexcept
-		{
-			std::cout << "final_suspend\n";
-			return {};
-		}
-
-		void return_void()
-		{
-			std::cout << "return_void\n";
-		}
-
-		void unhandled_exception()
-		{
-			std::cout << "unhandled_exception\n";
-		}
+		T result; // Тут хранится результат
+		Task get_return_object() { return Task{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
+		std::suspend_always initial_suspend() { return {}; }
+		std::suspend_always final_suspend() noexcept { return {}; }
+		void return_value(T value) { result = std::move(value); }
+		void unhandled_exception() { std::terminate(); }
 	};
 
-	ReturnObject(CoroHandle h)
-		: m_handle(h)
+	T GetResult() { return m_handle.promise().result; }
+
+	void Resume()
 	{
-		std::cout << "ReturnObject " << this << ", handle: " << m_handle.address() << "\n";
+		if (m_handle && !m_handle.done())
+		{
+			m_handle.resume();
+		}
 	}
 
-	ReturnObject(const ReturnObject&) = delete;
-	ReturnObject& operator=(const ReturnObject&) = delete;
+	Task() = default;
 
-	ReturnObject(ReturnObject&& other) noexcept
+	explicit Task(std::coroutine_handle<promise_type> handle)
+		: m_handle(handle)
+	{
+	}
+
+	Task(Task&& other) noexcept
 		: m_handle(std::exchange(other.m_handle, nullptr))
 	{
-		std::cout << "ReturnObject move " << this << "\n";
 	}
-	ReturnObject& operator=(ReturnObject&& other)
+	Task& operator=(Task&& other) noexcept
 	{
-		std::cout << "ReturnObject move assignment " << this << "\n";
-		if (this != &other)
+		if (this != std::addressof(other))
 		{
-			if (m_handle)
-			{
-				m_handle.destroy();
-			}
 			m_handle = std::exchange(other.m_handle, nullptr);
 		}
 		return *this;
 	}
 
-	ReturnObject(ReturnObject&&) = delete;
-
-	~ReturnObject()
+	~Task()
 	{
 		if (m_handle)
-		{
 			m_handle.destroy();
-		}
 	}
 
 private:
-	CoroHandle m_handle;
+	std::coroutine_handle<promise_type> m_handle = nullptr;
 };
 
-ReturnObject Coroutine()
+Task<int> Coroutine(int arg1, int arg2)
 {
-	std::cout << "Coroutine\n";
-	co_return;
+	int res = arg1 + arg2;
+	co_return res;
 }
-
-ReturnObject Coroutine(int arg1, int arg2)
-{
-}
-
-} // namespace
 
 int main()
 {
-	auto result = Coroutine();
+	auto task = Coroutine(40, 2);
+	task.Resume();
+	std::cout << task.GetResult() << "\n";
+}
+
+struct CoroutineState
+{
+	struct Frame
+	{
+		int arg1;
+		int arg2;
+		int res;
+	};
+
+	Frame frame;
+
+	Task<int>::promise_type promise;
+};
+
+/**
+ * Это очень условный код, иллюстрирующий внутреннее устройство корутины.
+ * Компилятор разобъет корутину на несколько частей,
+ * используя места вызов co_await/co_return/co_yield
+ * и будет переключаться между ними при возобновлении корутины.
+ * Состояние корутины будет сохранено в Coroutine state
+ */
+Task<int> GeneratedCoroutine(int arg1, int arg2)
+{
+	// 1. Выделение сырой памяти под состояние корутины
+	CoroutineState* state = static_cast<CoroutineState*>(operator new(sizeof(CoroutineState)));
+
+	// 2. Копируем аргументы в фрейм
+	// Строго говоря, компилятор вызывает конструктор копирования или перемещения, но здесь упрощено
+	state->frame.arg1 = arg1;
+	state->frame.arg2 = arg2;
+
+	try
+	{
+		// 3. Инициализация promise
+		::new (std::addressof(state->promise)) Task<int>::promise_type();
+	}
+	catch (...)
+	{
+		// Здесь компилятор ещё дополнительно вызовет деструкторы для всех аргументов
+
+		operator delete(state);
+		throw;
+	}
+
+	try
+	{
+		// 4. Вызов initial_suspend
+		auto initial = state->promise.initial_suspend();
+		if (!initial.await_ready())
+		{
+			// Компилятор дополнительно запомнит состояние корутины, чтобы потом возобновить её
+			return state->promise.get_return_object();
+		}
+
+		// 5. Выполнение тела корутины
+		// Строго говоря, компилятор вызовет конструктор для инициализации state->frame.res
+		state->frame.res = state->frame.arg1 + state->frame.arg2;
+
+		// 6. co_return
+		state->promise.return_value(state->frame.res);
+	}
+	catch (...)
+	{
+		state->promise.unhandled_exception();
+	}
+
+	// 7. Вызов final_suspend
+	auto final = state->promise.final_suspend();
+	if (!final.await_ready())
+	{
+		// Приостанавливаем выполнение и возвращаем управление
+		return state->promise.get_return_object();
+	}
+
+	// 8. Уничтожение promise
+	state->promise.~promise_type();
+
+	// 8. Освобождение памяти
+	operator delete(state);
+
+	return {};
 }
