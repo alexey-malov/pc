@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
+#include <utility>
 #include <variant>
 
 template <typename T>
@@ -19,7 +20,7 @@ public:
 		template <typename U>
 		std::suspend_always yield_value(U&& value)
 		{
-			result.emplace<1>(std::forward<U>(value));
+			result.template emplace<1>(std::forward<U>(value));
 			return {};
 		}
 
@@ -134,6 +135,10 @@ public:
 		{
 			if (this != std::addressof(other))
 			{
+				if (m_handle)
+				{
+					m_handle.destroy();
+				}
 				m_handle = std::exchange(other.m_handle, nullptr);
 			}
 			return *this;

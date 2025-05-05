@@ -1,5 +1,6 @@
 ﻿#include <coroutine>
 #include <iostream>
+#include <utility>
 
 template <typename T>
 class Generator
@@ -45,6 +46,8 @@ public:
 	{
 		if (this != std::addressof(other))
 		{
+			if (m_handle)
+				m_handle.destroy();
 			m_handle = std::exchange(other.m_handle, nullptr);
 		}
 		return *this;
