@@ -35,3 +35,41 @@ int main()
 }
 ```
 
+### Задание 2 — Генератор глав книг — 20 баллов
+
+Ознакомьтесь с классом `std::generator` (требуется поддержка c++ 23) (или воспользуйтесь его аналогом),
+чтобы написать корутину, генерирующую главы книг.
+
+```cpp
+struct Book
+{
+    std::string title;
+    std::string author;
+    std::vector<std::string> chapters;
+};
+
+struct BookChapter
+{
+    std::string bookTitle;
+    std::string bookAuthor;
+    std::string chapterTitle;
+};
+
+std::ostream& operator<<(std::ostream& os, const BookChapter& chapter);
+
+std::generator<BookChapter> ListBookChapters(const std::vector<Book>& chapters);
+
+int main()
+{
+    std::vector<Book> books = {
+        { "The Great Gatsby", "F. Scott Fitzgerald", { "Chapter 1", "Chapter 2" } },
+        { "1984", "George Orwell", { "Chapter 1", "Chapter 2", "Chapter 3" } },
+        { "To Kill a Mockingbird", "Harper Lee", { "Chapter 1" } }
+    };
+
+    for (const auto& chapter : ListBookChapters(books))
+    {
+        std::cout << chapter << std::endl;
+    }
+}
+```
