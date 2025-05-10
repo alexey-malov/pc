@@ -1,40 +1,12 @@
 #pragma once
+#include "awaitable_traits.h"
+#include "manual_reset_event.h"
 #include "task.h"
 #include <cassert>
-#include <condition_variable>
 #include <coroutine>
-#include <mutex>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-
-class ManualResetEvent
-{
-public:
-	void Set()
-	{
-		std::lock_guard<std::mutex> lock(m_mutex);
-		m_isSet = true;
-		m_cond.notify_all();
-	}
-
-	void Wait()
-	{
-		std::unique_lock<std::mutex> lock(m_mutex);
-		m_cond.wait(lock, [this] { return m_isSet; });
-	}
-
-	void Reset()
-	{
-		std::lock_guard<std::mutex> lock(m_mutex);
-		m_isSet = false;
-	}
-
-private:
-	std::mutex m_mutex;
-	std::condition_variable m_cond;
-	bool m_isSet = false;
-};
 
 namespace detail
 {
@@ -48,6 +20,8 @@ class SyncWaitTaskPromise
 	using CoroHandle = std::coroutine_handle<SyncWaitTaskPromise<Result>>;
 
 public:
+	using reference = Result&&;
+
 	void Start(ManualResetEvent& event)
 	{
 		m_event = &event;
@@ -68,7 +42,7 @@ public:
 			bool await_ready() const noexcept { return false; }
 			void await_suspend(CoroHandle coroutine) noexcept
 			{
-				coroutine.promise().m_event.Set();
+				coroutine.promise().m_event->Set();
 			}
 			void await_resume() noexcept {}
 		};
@@ -93,7 +67,7 @@ public:
 		m_exception = std::current_exception();
 	}
 
-	Result&& GetResult()
+	reference GetResult()
 	{
 		if (m_exception)
 		{
@@ -101,7 +75,7 @@ public:
 		}
 		else if (m_result)
 		{
-			return std::move(*m_result);
+			return static_cast<reference>(*m_result);
 		}
 		else
 		{
@@ -111,7 +85,7 @@ public:
 
 private:
 	ManualResetEvent* m_event = nullptr;
-	Result* m_result = nullptr;
+	std::remove_reference_t<Result>* m_result = nullptr;
 	std::exception_ptr m_exception;
 };
 
@@ -223,29 +197,33 @@ inline SyncWaitTask<void> SyncWaitTaskPromise<void>::get_return_object() noexcep
 	return SyncWaitTask<void>{ CoroHandle::from_promise(*this) };
 }
 
-template <typename T,
-	std::enable_if_t<!std::is_void_v<T>, int> = 0>
-SyncWaitTask<T> MakeSyncWaitTask(Task<T>&& task)
+template <
+	typename AWAITABLE,
+	typename RESULT = typename awaitable_traits<AWAITABLE&&>::await_result_t,
+	std::enable_if_t<!std::is_void_v<RESULT>, int> = 0>
+SyncWaitTask<RESULT> MakeSyncWaitTask(AWAITABLE&& awaitable)
 {
-	co_yield co_await std::move(task);
+	co_yield co_await std::forward<AWAITABLE>(awaitable);
 }
 
-template <typename T,
-	std::enable_if_t<std::is_void_v<T>, int> = 0>
-SyncWaitTask<T> MakeSyncWaitTask(Task<T>&& task)
+template <
+	typename AWAITABLE,
+	typename RESULT = typename awaitable_traits<AWAITABLE&&>::await_result_t,
+	std::enable_if_t<std::is_void_v<RESULT>, int> = 0>
+SyncWaitTask<void> MakeSyncWaitTask(AWAITABLE&& awaitable)
 {
-	co_await std::move(task);
+	co_await std::forward<AWAITABLE>(awaitable);
 }
 
 } // namespace detail
 
-template <typename T>
-auto SyncWait(Task<T>&& task)
+template <typename AWAITABLE>
+auto SyncWait(AWAITABLE&& awaitable)
+	-> typename awaitable_traits<AWAITABLE&&>::await_result_t
 {
-	auto syncWaitTask = detail::MakeSyncWaitTask(std::move(task));
-
+	auto task = detail::MakeSyncWaitTask(std::forward<AWAITABLE>(awaitable));
 	ManualResetEvent event;
-	syncWaitTask.Start(event);
+	task.Start(event);
 	event.Wait();
-	return syncWaitTask.GetResult();
+	return task.GetResult();
 }

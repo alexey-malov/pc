@@ -8,23 +8,22 @@ Task<int> Add(int x, int y)
 	co_return x + y;
 }
 
-Task<void> Outer()
+Task<int> Outer()
 {
 	std::cout << "Enter outer\n";
 	auto r1 = Add(10, 20);
 	auto r2 = Add(6, 6);
 	auto result = (co_await r1) + (co_await r2);
-	std::cout << result << "\n";
 	std::cout << "Exit outer\n";
-	co_return;
+	co_return result;
 }
 
 int main()
 {
 	try
 	{
-		auto result = Outer();
-		SyncWait(std::move(result));
+		auto result = SyncWait(Outer());
+		std::cout << result << "\n";
 	}
 	catch (const std::exception& e)
 	{

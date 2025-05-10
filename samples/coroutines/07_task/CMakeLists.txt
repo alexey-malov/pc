@@ -1,5 +1,5 @@
 ﻿# Add source to this project's executable.
-add_executable (07_task "07_task.cpp"  "task.h" "sync_wait.h")
+add_executable (07_task "07_task.cpp"  "task.h" "sync_wait.h" "awaitable_traits.h" "manual_reset_event.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET 07_task PROPERTY CXX_STANDARD 20)
