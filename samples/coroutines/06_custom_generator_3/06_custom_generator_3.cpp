@@ -15,6 +15,7 @@ public:
 
 	struct promise_type
 	{
+		// TODO: Придумайте способ не хранить копию значения внутри генератора
 		std::variant<std::monostate, T, std::exception_ptr> result;
 
 		template <typename U>
@@ -93,14 +94,6 @@ public:
 		{
 			m_handle.destroy();
 		}
-	}
-
-	bool HasValue() const noexcept
-	{
-		assert(m_handle);
-		m_handle.resume();
-
-		return !m_handle.done() || m_handle.promise().HasException();
 	}
 
 	T& GetValue()
