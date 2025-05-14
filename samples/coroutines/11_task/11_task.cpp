@@ -22,7 +22,8 @@ int main()
 {
 	try
 	{
-		auto result = SyncWait(Outer());
+		auto outer = Outer();
+		auto result = SyncWait(outer);
 		std::cout << result << "\n";
 	}
 	catch (const std::exception& e)

@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : Top-level CMake project file, do global configuration
 # and include sub-projects here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.30)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -23,4 +23,11 @@ add_subdirectory ("08_simple_awaiter_2")
 add_subdirectory ("09_simple_awaiter_3")
 add_subdirectory ("10_continuation")
 add_subdirectory ("11_task")
+add_subdirectory ("12_boost_cobalt")
+add_subdirectory ("13_delay")
+add_subdirectory ("14_co_main")
+add_subdirectory ("15_promise")
+add_subdirectory ("16_cobalt_task")
+add_subdirectory ("17_simple_http_client")
+add_subdirectory ("18_simple_http_client_2")
 add_subdirectory ("04_task")
