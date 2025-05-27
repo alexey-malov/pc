@@ -36,20 +36,56 @@ cl::Device SelectDevice()
 }
 
 const char* KernelSource = R"CLC(
+#define TILE_SIZE 16
+
 __kernel void mult_matrices(
 	const int rows1, const int columns1, const int columns2,
 	__global const float* m1,
 	__global const float* m2,
 	__global float* result) {
+
+	// Локальная память для хранения тайлов	1 и 2 матриц
+	__local float m1sub[TILE_SIZE][TILE_SIZE];
+	__local float m2sub[TILE_SIZE][TILE_SIZE];    
+
+	const int rows2 = columns1;
+
 	const int row = get_global_id(0);
 	const int col = get_global_id(1);
-	int m1Index = row * columns1;
-	int m2Index = col;
+
+	const int localRow = get_local_id(0);
+	const int localCol = get_local_id(1);
+
+	const int numTiles = (columns1 + TILE_SIZE - 1) / TILE_SIZE;
 
 	float sum = 0.0f;
-	for (int i = 0; i < columns1; ++i) {
-		sum += m1[m1Index++] * m2[m2Index];
-		m2Index += columns2;
+	for (int tile = 0; tile < numTiles; ++tile)
+	{
+		// Ряд и столбец матрицы, относящиеся к текущему тайлу
+		int tiledRow = row;
+		int tiledCol = tile * TILE_SIZE + localCol;
+		// Загрузка нашего элемента в локальную память
+		m1sub[localRow][localCol] = (tiledRow < rows1 && tiledCol < columns1)
+			? m1[tiledRow * columns1 + tiledCol]
+			: 0.0f;
+
+		tiledRow = tile * TILE_SIZE + localRow;
+		tiledCol = col;
+		m2sub[localRow][localCol] = (tiledRow < rows2 && tiledCol < columns2)
+			? m2[tiledRow * columns2 + tiledCol]
+			: 0.0f;
+
+		// Ждём, пока все потоки внутри группы загрузят свои данные в тайлы
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		// Перемножаем элементы тайла, соответствующие текущему потоку
+		for (int i = 0; i < TILE_SIZE; ++i)
+		{
+			sum += m1sub[localRow][i] * m2sub[i][localCol];
+		}
+
+		// Ждём, пока все потоки внутри группы закончат перемножение
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 	result[row * columns2 + col] = sum;
 }
@@ -149,10 +185,16 @@ void MultMatrices(int rows1, int columns1, int columns2)
 	kernel.setArg(4, buf2);
 	kernel.setArg(5, buf3);
 
-	// Итерационное пространство задачи равно размеру итоговой матрицы
-	cl::NDRange globalSize(rows1, columns2);
+	const int tileSize = 16;
 
-	queue.enqueueNDRangeKernel(kernel, /*offset*/ cl::NullRange, globalSize, cl::NullRange);
+	// Увеличиваем глобальный размер до кратного tileSize
+	cl::NDRange globalSize(
+		(rows1 + tileSize - 1) / tileSize * tileSize,
+		(columns2 + tileSize - 1) / tileSize * tileSize);
+	// Локальный размер равен размеру тайла
+	cl::NDRange localSize(tileSize, tileSize);
+
+	queue.enqueueNDRangeKernel(kernel, /*offset*/ cl::NullRange, globalSize, localSize);
 
 	queue.enqueueReadBuffer(buf3, /* blocking= */ CL_TRUE, /* offset= */ 0,
 		sizeof(cl_float) * result.size(), result.data());
@@ -163,7 +205,7 @@ void MultMatrices(int rows1, int columns1, int columns2)
 
 	std::cout << "GPU Multiplication time: " << Seconds(end - start).count() << " seconds\n";
 
-#if 0
+#if 1
 	auto cpuResult = MultMatricesOnCPU(rows1, columns1, columns2);
 	std::cout << cpuResult[0] << "\n";
 #endif

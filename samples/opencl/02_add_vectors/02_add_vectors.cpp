@@ -71,7 +71,7 @@ int main()
 
 		// В этот буфер будет записан результат, поэтому не инициализируем мего данными
 		cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * vectorSize);
-	
+
 		cl::Program program(context, KernelSource, /* build = */ true);
 		cl::Kernel kernel(program, "vector_add");
 
