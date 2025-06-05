@@ -1,4 +1,6 @@
-# Лекции
+# Лекции по дисциплине "Параллельное программирование"
+
+[Лекции 2025 года на Youtube](https://youtube.com/playlist?list=PLQqfYAyM3W1JuiTgGa3Vqt5-MliHeTyQS&si=6jGfHs-rrIP2uqUP)
 
 - [Конкурентность и параллелизм](01)
 - [Закон Амдала](02)
