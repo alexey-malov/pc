@@ -18,11 +18,17 @@ std::jthread MakePhilosopher(int index, std::mutex& leftFork, std::mutex& rightF
 				std::lock_guard lk1{ leftFork };
 				std::lock_guard lk2{ rightFork };
 				++eatTimes;
-				std::osyncstream(std::cout) << "Philosopher #" << index
-											<< " is eating #" << eatTimes << "\n";
+				if (eatTimes % 100 == 0 || eatTimes < 3)
+				{
+					std::osyncstream(std::cout) << "Philosopher #" << index
+												<< " ate " << eatTimes << " times\n";
+				}
 				std::this_thread::sleep_for(1ms);
 			}
-			std::osyncstream(std::cout) << "Philosopher #" << index << " is thinking\n";
+			if (eatTimes % 100 == 50 || eatTimes < 3)
+			{
+				std::osyncstream(std::cout) << "Philosopher #" << index << " is thinking\n";
+			}
 			std::this_thread::sleep_for(1ms);
 		}
 	});
