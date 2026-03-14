@@ -33,7 +33,7 @@ public:
 	FunctionWrapper& operator=(FunctionWrapper&&) = default;
 	FunctionWrapper(FunctionWrapper&) = delete;
 	FunctionWrapper(const FunctionWrapper&) = delete;
-	FunctionWrapper& operator=(const FunctionWrapper&) = default;
+	FunctionWrapper& operator=(const FunctionWrapper&) = delete;
 
 	void operator()() const { m_impl->Call(); }
 
@@ -123,6 +123,9 @@ int main()
 	auto f3 = executor.ExecuteAsync([] {
 		return 42;
 	});
+	auto f4 = executor.ExecuteAsync([] {
+		return "Hello";
+	});
 	try
 	{
 		std::cout << f1.get() << "\n"
@@ -133,4 +136,5 @@ int main()
 		std::cerr << e.what() << "\n";
 	}
 	std::cout << f3.get() << "\n";
+	std::cout << f4.get() << "\n";
 }

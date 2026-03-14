@@ -20,6 +20,6 @@ int main()
 	std::packaged_task<int(int, int)> add(Add);
 	auto result = add.get_future();
 	std::jthread worker{ std::move(add), 10, 20 };
-	worker.join();
 	std::cout << result.get() << "\n";
+	worker.join(); // Мы не зависнем. Выясните, почему.
 }
