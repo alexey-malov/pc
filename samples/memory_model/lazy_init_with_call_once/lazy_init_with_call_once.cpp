@@ -45,7 +45,7 @@ private:
 	mutable std::once_flag m_initFlag;
 };
 
-void TestSingleThreaded()
+void TestDCL()
 {
 	Widget widget;
 	const unsigned numThreads = 8;
@@ -61,5 +61,5 @@ void TestSingleThreaded()
 
 int main()
 {
-	MeasureTime("DCL (wrong) version", TestSingleThreaded);
+	MeasureTime("DCL (call_once) version", TestDCL);
 }

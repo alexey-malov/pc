@@ -53,6 +53,6 @@ int main()
 {
 	for (int i = 0; i < 10; ++i)
 	{
-		MeasureTime("DCL (wrong) version", TestSingleThreaded);
+		MeasureTime("DCL (ST) version", TestSingleThreaded);
 	}
 }
