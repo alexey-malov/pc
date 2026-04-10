@@ -1,19 +1,21 @@
-# Асинхронное выполнение на корутинах
+# Лабораторная работа №7 — Атомарные операции и lock-free структуры данных
 
-- [Асинхронное выполнение на корутинах](#асинхронное-выполнение-на-корутинах)
+- [Лабораторная работа №7 — Атомарные операции и lock-free структуры данных](#лабораторная-работа-7--атомарные-операции-и-lock-free-структуры-данных)
   - [Задания](#задания)
     - [Требования](#требования)
-    - [Задание 1 — Знакомство с корутинами — 30 баллов](#задание-1--знакомство-с-корутинами--30-баллов)
-    - [Задание 2 — Генератор глав книг — 20 баллов](#задание-2--генератор-глав-книг--20-баллов)
-    - [Задание 3 — Simple Awaiter — 30 баллов](#задание-3--simple-awaiter--30-баллов)
-    - [Задание 4 — асинхронная работа с файлами — 100 баллов](#задание-4--асинхронная-работа-с-файлами--100-баллов)
-    - [Задание 5 — изучение внутреннего устройства примитивов корутинных библиотек — до 50 баллов](#задание-5--изучение-внутреннего-устройства-примитивов-корутинных-библиотек--до-50-баллов)
+    - [Задание 1 — TicketOffice — 30 баллов](#задание-1--ticketoffice--30-баллов)
+      - [Бонус за сравнение производительности с lock-based версией класса — 10 баллов](#бонус-за-сравнение-производительности-с-lock-based-версией-класса--10-баллов)
+    - [Задание 2 — AtomicMax — 20 баллов](#задание-2--atomicmax--20-баллов)
+      - [Бонус за сравнение производительности с lock-based версией класса — 10 баллов](#бонус-за-сравнение-производительности-с-lock-based-версией-класса--10-баллов-1)
+    - [Задание 3 — lock-free thread pool — 70 баллов](#задание-3--lock-free-thread-pool--70-баллов)
+    - [Задание 4 — StopToken и StopSource — 30 баллов](#задание-4--stoptoken-и-stopsource--30-баллов)
+    - [Задание 5 — изучение внутреннего конкурентной структуры данных — до 120 баллов](#задание-5--изучение-внутреннего-конкурентной-структуры-данных--до-120-баллов)
 
 ## Задания
 
 - Для получения оценки "удовлетворительно" нужно набрать не менее 80 баллов.
 - На оценку "хорошо" нужно набрать не менее 120 баллов.
-- Для получения оценки "отлично" нужно набрать не менее 160 баллов.
+- Для получения оценки "отлично" нужно набрать не менее 250 баллов.
 
 ### Требования
 
@@ -24,177 +26,106 @@
 Для этого разработайте (или возьмите готовую) RAII-обёртку, автоматизирующую
 управление ресурсами операционной системы.
 
-### Задание 1 — Знакомство с корутинами — 30 баллов
+### Задание 1 — TicketOffice — 30 баллов
 
-Реализуйте класс `MyTask`, который можно использовать для возврата строковых значений из корутины с помощью `co_return`.
+Реализуйте класс `TicketOffice`, выполняющий продажу билетов в lock-free стиле.
+Метод `SellTickets` выполняет продажу билетов по следующим правилам:
 
-Примечание: корутина не должна приостанавливаться при запуске.
+- Нельзя продать больше билетов, чем имеется в наличии.
+- Параметр ticketsToBuy должен быть положительным.
 
-```cpp
-MyTask SimpleCoroutine()
-{
-    co_return "Hello from coroutine!";
-}
-
-int main()
-{
-    MyTask task = SimpleCoroutine();
-    // Должно вывести "Hello from coroutine!"
-    std::cout << task.GetResult() << std::endl;
-}
-```
-
-### Задание 2 — Генератор глав книг — 20 баллов
-
-Ознакомьтесь с классом `std::generator` (требуется поддержка c++ 23) (или воспользуйтесь его аналогом),
-чтобы написать корутину, генерирующую главы книг.
+Прототип класса TicketOffice дан ниже.
 
 ```cpp
-struct Book
+class TicketOffice
 {
-    std::string title;
-    std::string author;
-    std::vector<std::string> chapters;
+public:
+    explicit TicketOffice(int numTickets);
+
+    TicketOffice(const TicketOffice&) = delete;
+    TicketOffice& operator=(const TicketOffice&) = delete;
+
+    /**
+     * Выполняет продажу билета.
+     * Возвращает количество фактически проданных билетов.
+     * Если ticketsToBuy <= 0, выбрасывается исключение std::invalid_argument
+     */
+    int SellTickets(int ticketsToBuy);
+
+    int GetTicketsLeft() const noexcept;
+
+private:
+    // Количество билетов должно быть атомарным
+    std::atomic<int> m_numTickets;
 };
-
-struct BookChapter
-{
-    std::string bookTitle;
-    std::string bookAuthor;
-    std::string chapterTitle;
-};
-
-std::ostream& operator<<(std::ostream& os, const BookChapter& chapter);
-
-std::generator<BookChapter> ListBookChapters(const std::vector<Book>& chapters);
-
-int main()
-{
-    std::vector<Book> books = {
-        { "The Great Gatsby", "F. Scott Fitzgerald", { "Chapter 1", "Chapter 2" } },
-        { "1984", "George Orwell", { "Chapter 1", "Chapter 2", "Chapter 3" } },
-        { "To Kill a Mockingbird", "Harper Lee", { "Chapter 1" } }
-    };
-
-    for (const auto& chapter : ListBookChapters(books))
-    {
-        std::cout << chapter << std::endl;
-    }
-}
 ```
 
-### Задание 3 — Simple Awaiter — 30 баллов
+Расставьте правильным образом порядок доступа к атомарным переменным.
 
-Напишите класс (или структуру) `MyAwaiter`, который можно использовать в качестве аргумента оператора `co_await`.
-Также напишите класс `MyTask`, который можно возвращать из корутины.
+Для проверки работы класса в многопоточном режиме напишите юнит-тесты.
 
-```txt
-Before await
-Before resume
-42
-After await
-After resume
-```
+#### Бонус за сравнение производительности с lock-based версией класса — 10 баллов
+
+Проведите измерения времени работы программы при количестве потоков, изменяющемся от 1 до 30
+и сравните его с версией класса `TicketOfficeWithLock`, использующей мьютекс для синхронизации.
+Сделайте выводы.
+
+### Задание 2 — AtomicMax — 20 баллов
+
+Разработайте шаблонный класс AtomicMax, позволяющий атомарно обновлять максимальное значение.
 
 ```cpp
-struct MyAwaiter
+template <typename T>
+class AtomicMax
 {
-    /* Напишите тело структуры */
+public:
+    explicit AtomicMax(T value);
+
+    void Update(T newValue) noexcept;
+
+    T GetValue() const noexcept;
+
+private:
+    std::atomic<T> m_value;
 };
-
-class MyTask
-{
-    /* Напишите тело класса */
-};
-
-MyTask CoroutineWithAwait(int x, int y)
-{
-    std::cout << "Before await\n";
-    // Приостанавливает работу. При возобновлении возвращает сумму аргументов
-    int result = co_await MyAwaiter{ x, y };
-    std::cout << result << "\n";
-    std::cout << "After await\n";
-}
-
-int main()
-{
-    auto task = CoroutineWithAwait(30, 12);
-    std::cout << "Before resume\n";
-    task.Resume(); // Возобновляем работу Task
-    std::cout << "After resume\n";
-    CoroutineWithAwait(5, 10).Resume();
-    std::cout << "End of main\n";
-}
 ```
 
-Эта программа должна вывести следующий текст:
+Расставьте правильным образом порядок доступа к атомарным переменным.
 
-```txt
-Before await
-Before resume
-42
-After await
-After resume
-Before await
-15
-After await
-End of main
-```
+Для проверки работы класса в многопоточном режиме напишите юнит-тесты.
 
-### Задание 4 — асинхронная работа с файлами — 100 баллов
+#### Бонус за сравнение производительности с lock-based версией класса — 10 баллов
 
-Реализуйте под Linux или Windows класс AsyncFile и функцию AsyncOpenFile,
-позволяющие асинхронно открывать файл, читать и писать из него данные.
+Проведите измерения времени работы программы при количестве потоков, изменяющемся от 1 до 30
+и сравните его с версией класса `AtomicMaxWithLock`, использующей мьютекс для синхронизации.
+Сделайте выводы.
 
-Для управления асинхронными операциями разработайте класс `Dispatcher`.
-Под Windows он может использовать [IO Completion Port](https://learn.microsoft.com/en-us/windows/win32/fileio/i-o-completion-ports).
-Под Linux для этих целей можно использовать [io_uring](https://man7.org/linux/man-pages/man7/io_uring.7.html).
+### Задание 3 — lock-free thread pool — 70 баллов
 
-```cpp
+Разработайте класс ThreadPool, используя одну из имеющихся lock-free реализаций очередей.
+Можно взять из Boost.LockFree (<https://boost.org>) или libcds (<https://github.com/khizmax/libcds>).
 
-// класс Dispatcher отвечает за работу с асинхронными операциями ввода-вывода.
-// Например, под Windows он может использовать IO Completion Port
-Dispatcher dispatcher;
+Напишите тесты для этого класса.
 
-Task AsyncCopyFile(Dispatcher& dispatcher, std::string from, std::string to)
-{
-    // Асинхронно открывает файл для чтения
-    AsyncFile input = co_await AsyncOpenFile(dispatcher, from, OpenMode::Read);
+Сравните производительность (время выполнения N операций в lock-free и lock-based) реализаций Thread Pool,
+а также с boost::asio::thread_pool.
+Постройте график зависимости времени выполнения N операций от количества потоков (от 1 до 2 * количество процессоров).
 
-    // Асинхронно открываем файл для записи
-    AsyncFile output = co_await AsyncOpenFile(dispatcher, to, OpenMode::Write)
+### Задание 4 — StopToken и StopSource — 30 баллов
 
-    std::vector<char> buffer(1024);
+Разработайте классы `StopToken` и `StopSource`, являющиеся упрощёнными версиями классов `std::stop_token` и `std::stop_source`.
 
-    for (unsigned bytesRead;
-            (bytesRead = co_await input.ReadAsync(dispatcher, buffer.data(), buffer.size())) != 0;
-        )
-    {
-        // Асинхронно записываем bytesRead байт в файл
-        co_await output.AsyncWrite(dispatcher, buffer.data(), bytesRead);
-    }
+`StopSource` должен предоставлять методы:
 
-    // Деструкторы AsyncFile выполнят его закрытие
-}
+- `RequestStop` для запроса остановки.
+- `GetToken` для получения `StopToken`.
 
-Task AsyncCopyTwoFiles(Dispatcher& dispatcher)
-{
-    auto t1 = AsyncCopyFile(dispatcher, "a.in", "a.out");
-    auto t2 = AsyncCopyFile(dispatcher, "b.in", "b.out");
-    co_await t1;
-    co_await t2;
-}
-```
+`StopToken` должен предоставлять методы:
 
-### Задание 5 — изучение внутреннего устройства примитивов корутинных библиотек — до 50 баллов
+- `StopRequested` для проверки того, была ли запрошена остановка.
 
-Согласуйте с преподавателем тему индивидуального задания по изучению реализации
-одного из примитивов корутинных библиотек
-([Boost.Asio](https://www.boost.org/doc/libs/latest/doc/html/boost_asio.html),
-[Boost.Cobalt](https://www.boost.org/doc/libs/1_88_0/libs/cobalt/doc/html/index.html),
-[CppCoro](https://github.com/andreasbuhr/cppcoro),
-[Folly](https://github.com/facebook/folly),
-[SeaStar](https://github.com/scylladb/seastar)).
-В процессе выполнения задания изучите с исходный код примитива и
-и подготовьте доклад с описанием внутреннего устройства примитива.
-Приведите пример использования этого примитива.
+### Задание 5 — изучение внутреннего конкурентной структуры данных — до 120 баллов
+
+Согласуйте с преподавателем тему индивидуального задания по изучению реализации одной из конкурентных
+структур данных. В процессе выполнения задания вам надо будет ознакомиться с исходным кодом реализации
+и подготовить небольшой доклад с описанием внутреннего устройства этой структуры данных и используемых алгоритмов.
