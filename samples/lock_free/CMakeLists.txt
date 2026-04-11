@@ -12,6 +12,7 @@ endif()
 project ("lock_free")
 
 # Include sub-projects.
+add_subdirectory ("ts_queue_with_mutex")
 add_subdirectory ("stack")
 add_subdirectory ("lf_stack_1")
 add_subdirectory ("lf_stack_2")

@@ -1,10 +1,4 @@
 ﻿#include "MeasureTime.h"
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <execution>
-#include <iostream>
-#include <random>
 #include <array>
 
 constexpr std::size_t kCacheLineSize = std::hardware_destructive_interference_size;
@@ -29,6 +23,7 @@ std::uint64_t SumCacheLine(std::size_t x, std::size_t y)
 
 int main()
 {
+	// volatile здесь нужен, чтобы помешать копмилятору посчитать результат во время компиляции
 	volatile std::size_t seqX = 0;
 	volatile std::size_t seqY = 1;
 	volatile std::size_t randX = 13;

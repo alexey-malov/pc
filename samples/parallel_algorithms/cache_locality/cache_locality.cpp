@@ -1,10 +1,4 @@
 ﻿#include "MeasureTime.h"
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <execution>
-#include <iostream>
-#include <random>
 #include <vector>
 
 constexpr size_t N = 8192;

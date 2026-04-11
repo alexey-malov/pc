@@ -14,7 +14,7 @@ int main()
 	std::thread worker([&] {
 		message = "Hello from worker thread"; // Обычная, неатомарная запись
 		ready.store(true, std::memory_order_release); // Публикация результата
-		std::this_thread::sleep_for(1s); // продолжнаем работу
+		std::this_thread::sleep_for(1s); // продолжаем работу
 		std::osyncstream(std::cout) << "End of worker thread\n";
 	});
 

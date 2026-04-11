@@ -1,10 +1,4 @@
 ﻿#include "MeasureTime.h"
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <execution>
-#include <iostream>
-#include <random>
 #include <array>
 
 constexpr std::size_t kCacheLineSize = std::hardware_destructive_interference_size;
