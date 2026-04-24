@@ -62,10 +62,25 @@ public:
 				  << m_handle.address() << "\n ";
 	}
 
+	ReturnObject(const ReturnObject&) = delete;
+	ReturnObject& operator=(const ReturnObject&) = delete;
+
 	ReturnObject(ReturnObject&& other) noexcept
 		: m_handle(std::exchange(other.m_handle, nullptr))
 	{
 		std::cout << "ReturnObject move " << this << "\n";
+	}
+
+	ReturnObject& operator=(ReturnObject&& other) noexcept
+	{
+		if (this != &other)
+		{
+			std::cout << "ReturnObject move assignment " << this << "\n";
+			if (m_handle)
+				m_handle.destroy();
+			m_handle = std::exchange(other.m_handle, nullptr);
+		}
+		return *this;
 	}
 
 	~ReturnObject()
