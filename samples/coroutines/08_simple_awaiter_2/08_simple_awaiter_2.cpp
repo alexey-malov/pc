@@ -2,7 +2,7 @@
 #include <iostream>
 
 // Awaitable объект
-struct SimpleAwaitable
+struct SimpleAwaiter
 {
 	bool await_ready() const noexcept
 	{
@@ -40,7 +40,7 @@ struct ReturnObject
 
 ReturnObject DoSomething()
 {
-	int result = co_await SimpleAwaitable{};
+	int result = co_await SimpleAwaiter{};
 	std::cout << "co_await returned: " << result << '\n';
 }
 

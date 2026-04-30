@@ -1,8 +1,8 @@
 ﻿#include <coroutine>
 #include <iostream>
 
-// Awaitable объект
-struct SimpleAwaitable
+// Awaiter объект
+struct SimpleAwaiter
 {
 	bool await_ready() const noexcept
 	{
@@ -31,8 +31,16 @@ struct ReturnObject
 	struct promise_type
 	{
 		ReturnObject get_return_object() { return {}; }
-		std::suspend_never initial_suspend() { return {}; }
-		std::suspend_never final_suspend() noexcept { return {}; }
+		std::suspend_never initial_suspend()
+		{
+			std::cout << "initial_suspend\n";
+			return {};
+		}
+		std::suspend_never final_suspend() noexcept
+		{
+			std::cout << "final_suspend\n";
+			return {};
+		}
 		void return_void() {}
 		void unhandled_exception() {}
 	};
@@ -40,7 +48,7 @@ struct ReturnObject
 
 ReturnObject DoSomething()
 {
-	int result = co_await SimpleAwaitable{};
+	int result = co_await SimpleAwaiter{};
 	std::cout << "co_await returned: " << result << '\n';
 }
 

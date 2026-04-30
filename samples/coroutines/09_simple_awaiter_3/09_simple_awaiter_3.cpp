@@ -38,7 +38,7 @@ struct ReturnObject
 	std::coroutine_handle<promise_type> handle;
 };
 
-struct SimpleAwaitable
+struct SimpleAwaiter
 {
 	bool await_ready() const noexcept
 	{
@@ -61,7 +61,7 @@ struct SimpleAwaitable
 
 ReturnObject DoSomething()
 {
-	int result = co_await SimpleAwaitable{};
+	int result = co_await SimpleAwaiter{};
 	std::cout << "co_await returned: " << result << '\n';
 }
 
